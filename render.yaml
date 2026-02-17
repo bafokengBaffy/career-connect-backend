@@ -1,0 +1,37 @@
+services:
+  - type: web
+    name: career-connect-backend
+    runtime: node
+    repo: https://github.com/yourusername/career-connect-backend
+    plan: starter
+    region: frankfurt
+    branch: main
+    buildCommand: npm ci --only=production
+    startCommand: npm run prod
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 5001
+      - key: JWT_SECRET
+        generateValue: true
+      - key: SESSION_SECRET
+        generateValue: true
+      - key: REDIS_URL
+        fromService:
+          type: redis
+          name: career-connect-redis
+          property: connectionString
+      - key: MONGODB_URI
+        sync: false
+      - key: FIREBASE_PRIVATE_KEY
+        sync: false
+      - key: CLOUDINARY_API_SECRET
+        sync: false
+
+  - type: redis
+    name: career-connect-redis
+    plan: starter
+    maxmemoryPolicy: allkeys-lru
+    ipAllowList: []

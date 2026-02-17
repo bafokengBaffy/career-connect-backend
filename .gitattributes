@@ -1,0 +1,7 @@
+# Auto detect text files and perform LF normalization
+* text=auto
+
+# Specific settings for different file types
+*.js text eol=lf
+*.ts text eol=lf
+*.json text eol=lf
