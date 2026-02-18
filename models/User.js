@@ -1,4 +1,15 @@
 // @ts-nocheck
+// backend/models/User.js
+
+// IMPORTANT: If you have an isFeatured property in your user data,
+// make sure there's no method named isFeatured in this class
+// The warning indicates a naming conflict
+
+// If you find a method named isFeatured, rename it to something like:
+// - checkIsFeatured()
+// - getFeaturedStatus()
+// - isUserFeatured()
+// @ts-nocheck
 const { usersCollection, db } = require("../config/firebase");
 const { admin } = require("../config/firebase");
 
