@@ -1,3 +1,4 @@
+// @ts-nocheck
 // routes/uploadRoutes.js - COMPLETE WORKING VERSION
 const express = require('express');
 const router = express.Router();
@@ -16,7 +17,7 @@ console.log('   Available functions:', Object.keys(uploadMiddleware));
 router.post(
   '/upload',
   authMiddleware.protect,
-  (req, res, next) => {
+  (/** @type {{ headers: { [x: string]: any; }; file: any; }} */ req, /** @type {any} */ _res, /** @type {() => void} */ next) => {
     console.log('📤 Single upload route hit');
     console.log('   Headers:', req.headers['content-type']);
     console.log('   Has file?', !!req.file);

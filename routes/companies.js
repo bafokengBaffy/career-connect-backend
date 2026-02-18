@@ -1,3 +1,4 @@
+// @ts-nocheck
 const express = require("express");
 const { db, isFirebaseInitialized } = require("../config/firebase");
 const router = express.Router();

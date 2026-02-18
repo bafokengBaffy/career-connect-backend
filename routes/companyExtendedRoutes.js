@@ -1,3 +1,4 @@
+// @ts-nocheck
 // frontend/src/services/companyExtendedServices.js
 import { auth, db } from '../config/firebase';
 import {

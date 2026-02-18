@@ -10,7 +10,6 @@
     "dev:win": "set NODE_ENV=development && nodemon server.js",
     "prod": "cross-env NODE_ENV=production node server.js",
     "prod:cluster": "cross-env NODE_ENV=production node cluster.js",
-    
     "test": "jest",
     "test:watch": "jest --watch",
     "test:coverage": "jest --coverage",
@@ -21,45 +20,35 @@
     "test:full": "node test-full-upload-flow.js",
     "test:load": "node test-upload-load.js",
     "test:routes": "curl -s http://localhost:5001/api/debug/server-status | jq '.routes'",
-    
     "security:audit": "npm audit --production --audit-level=high || true",
     "security:audit:fix": "npm audit fix",
     "security:scan": "node scripts/security-audit.js",
     "security:headers": "curl -I https://career-connect-backend-gp8u.onrender.com",
-    
     "check:env": "node check-env.js",
     "check:health": "curl -s http://localhost:5001/health | jq",
     "check:ready": "curl -s http://localhost:5001/ready | jq",
     "check:live": "curl -s http://localhost:5001/live | jq",
-    
     "db:init": "node scripts/init-database.js",
     "db:backup": "node scripts/backup-database.js",
     "db:restore": "node scripts/restore-database.js",
     "db:migrate": "node scripts/migrate.js",
-    
     "logs:tail": "tail -f logs/combined.log",
     "logs:errors": "tail -f logs/error.log",
-    
     "setup:prod": "npm ci --only=production",
     "setup:dev": "npm install",
     "setup:env": "echo 'Copy .env.example to .env and configure your environment variables'",
-    
     "postinstall": "npm run check:env",
     "prestart": "npm run security:audit",
     "predev": "npm run check:env",
-    
     "docker:build": "docker build -t career-connect-backend .",
     "docker:run": "docker run -p 5001:5001 career-connect-backend",
     "docker:push": "docker push career-connect-backend",
-    
     "deploy:render": "git push render main",
     "deploy:heroku": "git push heroku main",
     "deploy:aws": "eb deploy",
-    
     "monitor:status": "pm2 status",
     "monitor:logs": "pm2 logs",
     "monitor:restart": "pm2 restart all",
-    
     "clean": "rimraf node_modules package-lock.json",
     "clean:logs": "rimraf logs/*.log",
     "clean:uploads": "rimraf uploads/*"
@@ -101,9 +90,11 @@
     "helmet": "^7.2.0",
     "hpp": "^0.2.3",
     "jsonwebtoken": "^9.0.2",
+    "mongoose": "9.2.1",
     "morgan": "^1.10.0",
     "multer": "^1.4.5-lts.1",
     "multer-storage-cloudinary": "^4.0.0",
+    "node-cache": "5.1.2",
     "nodemailer": "^6.9.16",
     "redis": "^4.7.0",
     "uuid": "^11.0.5",

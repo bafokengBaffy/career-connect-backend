@@ -1,3 +1,4 @@
+// @ts-nocheck
 const express = require("express");
 const router = express.Router();
 const authController = require("../controllers/authController");
@@ -90,7 +91,7 @@ router.get("/users/role/:role", protect, isAdmin, async (req, res) => {
     res.json({
       success: true,
       count: users.length,
-      data: users.map(u => ({
+      data: users.map((/** @type {{ id: any; email: any; fullName: any; role: any; status: any; }} */ u) => ({
         id: u.id,
         email: u.email,
         fullName: u.fullName,
