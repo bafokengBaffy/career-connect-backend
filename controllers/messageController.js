@@ -110,6 +110,139 @@ exports.getMessages = async (req, res) => {
   }
 };
 
+// backend/controllers/messageController.js
+
+// Add these missing methods:
+
+// @desc    Get conversations
+// @route   GET /api/messages/conversations
+// @access  Private
+exports.getConversations = async (req, res) => {
+  try {
+    // Get unique conversations (group by participants)
+    const conversations = await Message.aggregate([
+      {
+        $match: {
+          $or: [
+            { sender: mongoose.Types.ObjectId(req.user.id) },
+            { recipient: mongoose.Types.ObjectId(req.user.id) }
+          ],
+          deletedBySender: { $ne: true },
+          deletedByRecipient: { $ne: true }
+        }
+      },
+      {
+        $sort: { createdAt: -1 }
+      },
+      {
+        $group: {
+          _id: {
+            $cond: [
+              { $eq: ["$sender", mongoose.Types.ObjectId(req.user.id)] },
+              "$recipient",
+              "$sender"
+            ]
+          },
+          lastMessage: { $first: "$$ROOT" },
+          unreadCount: {
+            $sum: {
+              $cond: [
+                {
+                  $and: [
+                    { $eq: ["$recipient", mongoose.Types.ObjectId(req.user.id)] },
+                    { $eq: ["$read", false] }
+                  ]
+                },
+                1,
+                0
+              ]
+            }
+          }
+        }
+      }
+    ]);
+    
+    // Populate participant details
+    await Message.populate(conversations, {
+      path: '_id',
+      select: 'firstName lastName email profilePicture'
+    });
+    
+    res.json({
+      success: true,
+      data: conversations
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: 'Error fetching conversations',
+      error: error.message
+    });
+  }
+};
+
+// @desc    Get unread message count
+// @route   GET /api/messages/unread-count
+// @access  Private
+exports.getUnreadCount = async (req, res) => {
+  try {
+    const count = await Message.countDocuments({
+      recipient: req.user.id,
+      read: false,
+      deletedByRecipient: { $ne: true }
+    });
+    
+    res.json({
+      success: true,
+      data: { unreadCount: count }
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: 'Error fetching unread count',
+      error: error.message
+    });
+  }
+};
+
+// @desc    Mark message as read
+// @route   PUT /api/messages/:id/read
+// @access  Private
+exports.markAsRead = async (req, res) => {
+  try {
+    const message = await Message.findOneAndUpdate(
+      {
+        _id: req.params.id,
+        recipient: req.user.id
+      },
+      {
+        read: true,
+        readAt: Date.now()
+      },
+      { new: true }
+    );
+    
+    if (!message) {
+      return res.status(404).json({
+        success: false,
+        message: 'Message not found'
+      });
+    }
+    
+    res.json({
+      success: true,
+      message: 'Message marked as read',
+      data: message
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: 'Error marking message as read',
+      error: error.message
+    });
+  }
+};
+
 // @desc    Get message by ID
 // @route   GET /api/messages/:id
 // @access  Private

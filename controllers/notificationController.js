@@ -44,6 +44,111 @@ exports.getNotifications = async (req, res) => {
   }
 };
 
+// backend/controllers/notificationController.js
+
+// Add these missing methods:
+
+// @desc    Get unread notification count
+// @route   GET /api/notifications/unread-count
+// @access  Private
+exports.getUnreadCount = async (req, res) => {
+  try {
+    const count = await Notification.countDocuments({
+      recipient: req.user.id,
+      read: false
+    });
+    
+    res.json({
+      success: true,
+      data: { unreadCount: count }
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: 'Error fetching unread count',
+      error: error.message
+    });
+  }
+};
+
+// @desc    Get notification by ID
+// @route   GET /api/notifications/:id
+// @access  Private
+exports.getNotificationById = async (req, res) => {
+  try {
+    const notification = await Notification.findOne({
+      _id: req.params.id,
+      recipient: req.user.id
+    });
+    
+    if (!notification) {
+      return res.status(404).json({
+        success: false,
+        message: 'Notification not found'
+      });
+    }
+    
+    res.json({
+      success: true,
+      data: notification
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: 'Error fetching notification',
+      error: error.message
+    });
+  }
+};
+
+// @desc    Update notification preferences
+// @route   PUT /api/notifications/preferences
+// @access  Private
+exports.updatePreferences = async (req, res) => {
+  try {
+    const user = await User.findByIdAndUpdate(
+      req.user.id,
+      {
+        'notificationPreferences': req.body,
+        updatedAt: Date.now()
+      },
+      { new: true, upsert: true }
+    ).select('notificationPreferences');
+    
+    res.json({
+      success: true,
+      message: 'Preferences updated successfully',
+      data: user.notificationPreferences || req.body
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: 'Error updating preferences',
+      error: error.message
+    });
+  }
+};
+
+// @desc    Clear all notifications
+// @route   DELETE /api/notifications/clear-all
+// @access  Private
+exports.clearAllNotifications = async (req, res) => {
+  try {
+    await Notification.deleteMany({ recipient: req.user.id });
+    
+    res.json({
+      success: true,
+      message: 'All notifications cleared successfully'
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: 'Error clearing notifications',
+      error: error.message
+    });
+  }
+};
+
 // @desc    Mark notification as read
 // @route   PUT /api/notifications/:id/read
 // @access  Private
