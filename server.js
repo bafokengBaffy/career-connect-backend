@@ -1,7 +1,8 @@
+// backend/server.js
 // @ts-nocheck
 /**
  * Career Connect Lesotho - Enterprise Security Hardened API Server
- * OWASP Top 10 Compliant Implementation
+ * OWASP Top 10 Compliant Implementation with Arcjet Protection
  * Security Level: Enterprise
  */
 
@@ -37,7 +38,11 @@ const {
   initializeRedis,
   getSessionConfig,
   notFoundHandler,
-  globalErrorHandler
+  globalErrorHandler,
+  arcjetMiddleware,
+  arcjetAuthMiddleware,
+  arcjetUploadMiddleware,
+  arcjetConfig
 } = require('./middleware');
 
 // Utilities
@@ -54,6 +59,9 @@ console.log("🔐 [ENTERPRISE SERVER] Initializing with maximum security...");
 
 // Validate environment variables
 validateEnvironment();
+
+// Initialize Arcjet
+arcjetConfig.initialize();
 
 const app = express();
 const PORT = process.env.PORT || 5001;
@@ -80,8 +88,11 @@ const speedLimiter = slowDown({
 });
 app.use(speedLimiter);
 
-// Global rate limit
+// Global rate limit (complementary to Arcjet)
 app.use(rateLimiters.globalLimiter);
+
+// Apply Arcjet global protection
+app.use(arcjetMiddleware);
 
 // Body parsing with strict limits
 app.use(express.json({
@@ -187,7 +198,8 @@ app.get("/", (req, res) => {
       rateLimiting: "enabled",
       csrf: "enabled",
       xss: "enabled",
-      sqlInjection: "enabled"
+      sqlInjection: "enabled",
+      arcjet: arcjetConfig.initialized ? "enabled" : "disabled"
     }
   });
 });
@@ -200,7 +212,8 @@ app.get("/health", (req, res) => {
     uptime: process.uptime(),
     memory: process.memoryUsage(),
     database: "connected",
-    redis: redisClient ? "connected" : "disabled"
+    redis: redisClient ? "connected" : "disabled",
+    arcjet: arcjetConfig.initialized ? "active" : "inactive"
   };
   
   res.json(health);
@@ -210,6 +223,10 @@ app.get("/health", (req, res) => {
 app.get("/api/security/test", (req, res) => {
   res.json({
     message: "Security headers are active",
+    arcjet: {
+      initialized: arcjetConfig.initialized,
+      mode: process.env.NODE_ENV === 'production' ? 'LIVE' : 'DRY_RUN'
+    },
     headers: {
       'X-Content-Type-Options': res.getHeader('X-Content-Type-Options'),
       'X-Frame-Options': res.getHeader('X-Frame-Options'),
@@ -217,46 +234,6 @@ app.get("/api/security/test", (req, res) => {
       'Strict-Transport-Security': res.getHeader('Strict-Transport-Security') || 'Not in production'
     }
   });
-});
-
-// Security headers check
-app.get("/api/security/headers-check", (req, res) => {
-  const requiredHeaders = [
-    'X-Content-Type-Options',
-    'X-Frame-Options',
-    'X-XSS-Protection',
-    'Strict-Transport-Security'
-  ];
-  
-  const missingHeaders = requiredHeaders.filter(header => !res.getHeader(header));
-  
-  res.json({
-    securityCheck: missingHeaders.length === 0 ? "PASS" : "FAIL",
-    missingHeaders,
-    allHeaders: Object.keys(res.getHeaders())
-  });
-});
-
-// Security dashboard (admin only)
-app.get("/api/admin/security-dashboard", authenticateToken, (req, res) => {
-  const securityStatus = {
-    activeProtections: {
-      rateLimiting: true,
-      csrf: true,
-      xss: true,
-      sqlInjection: true,
-      fileValidation: true
-    },
-    threatLevel: "low",
-    lastIncident: new Date(Date.now() - 86400000).toISOString(),
-    metrics: {
-      totalRequests: 0,
-      blockedRequests: 0,
-      avgResponseTime: "50ms"
-    }
-  };
-  
-  res.json(securityStatus);
 });
 
 // Simple test route
@@ -270,18 +247,23 @@ app.get('/api/test', (req, res) => {
 
 // Mount secure routes with appropriate security layers
 if (routes.auth) {
-  app.use("/api/auth", rateLimiters.authLimiter, routes.auth);
-  logger.info("✅ Authentication routes mounted with rate limiting");
+  app.use("/api/auth", 
+    arcjetAuthMiddleware, // Enhanced Arcjet with email validation
+    rateLimiters.authLimiter, 
+    routes.auth
+  );
+  logger.info("✅ Authentication routes mounted with Arcjet + rate limiting");
 }
 
 if (routes.upload) {
   app.use("/api/uploads", 
     authenticateToken, 
+    arcjetUploadMiddleware,
     rateLimiters.uploadLimiter, 
     fileUploadValidation, 
     routes.upload
   );
-  logger.info("✅ Upload routes mounted with authentication and rate limiting");
+  logger.info("✅ Upload routes mounted with Arcjet + authentication + rate limiting");
 }
 
 // Protected routes
@@ -295,16 +277,29 @@ const protectedRoutes = [
   { name: 'jobs', path: '/api/jobs' },
   { name: 'applications', path: '/api/applications' },
   { name: 'messages', path: '/api/messages' },
-  { name: 'notifications', path: '/api/notifications' }
+  { name: 'notifications', path: '/api/notifications' },
+  { name: 'skills', path: '/api/skills' },
+  { name: 'education', path: '/api/education' },
+  { name: 'experiences', path: '/api/experiences' },
+  { name: 'projects', path: '/api/projects' },
+  { name: 'competitions', path: '/api/competitions' },
+  { name: 'reviews', path: '/api/reviews' },
+  { name: 'savedItems', path: '/api/saved-items' },
+  { name: 'follows', path: '/api/follows' },
+  { name: 'businessModels', path: '/api/business-models' },
+  { name: 'news', path: '/api/news' }
 ];
 
 protectedRoutes.forEach(route => {
   if (routes[route.name]) {
-    // Validate that route is a valid router before mounting
     if (typeof routes[route.name] === 'function' || 
         (typeof routes[route.name] === 'object' && routes[route.name] !== null)) {
-      app.use(route.path, authenticateToken, routes[route.name]);
-      logger.info(`✅ ${route.path} mounted with authentication`);
+      app.use(route.path, 
+        authenticateToken, 
+        arcjetMiddleware, // Apply standard Arcjet protection
+        routes[route.name]
+      );
+      logger.info(`✅ ${route.path} mounted with authentication + Arcjet`);
     } else {
       logger.warn(`⚠️ ${route.path} route not mounted - invalid router`);
     }

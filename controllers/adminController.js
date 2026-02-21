@@ -1,3 +1,4 @@
+// @ts-nocheck
 const Admin = require('../models/Admin');
 const User = require('../models/User');
 const Company = require('../models/Company');
@@ -9,7 +10,7 @@ const Notification = require('../models/Notification');
 // @desc    Get admin profile
 // @route   GET /api/admins/profile
 // @access  Private/Admin
-exports.getAdminProfile = async (req, res) => {
+exports.getAdminProfile = async (/** @type {{ user: { id: any; }; }} */ req, /** @type {{ status: (arg0: number) => { (): any; new (): any; json: { (arg0: { success: boolean; message: string; error?: any; }): void; new (): any; }; }; json: (arg0: { success: boolean; data: any; }) => void; }} */ res) => {
   try {
     const admin = await Admin.findOne({ user: req.user.id })
       .populate('user', 'firstName lastName email profilePicture');
